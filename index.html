@@ -7,7 +7,7 @@
 <title>Minha Agenda de Costura</title>
 <link rel="icon" type="image/png" href="icone.png">
 <link rel="apple-touch-icon" href="icone.png">
-<link rel="manifest" href="data:application/json,{%22name%22:%22Minha%20Agenda%22,%22short_name%22:%22Agenda%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%23ffffff%22,%22theme_color%22:%22%231e40af%22}">
+<link rel="manifest" href="manifest.json">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
@@ -15,20 +15,28 @@
   body { max-width: 600px; margin: 0 auto; padding-bottom: 40px; width: 100%; }
 
   /* Header com próxima data livre */
-  .header { background: #1e40af; color: white; padding: 20px 16px; text-align: center; }
+  .header { background: #1e40af; color: white; padding: 20px 16px; text-align: center; position: relative; cursor: pointer; }
+  .header.editable:hover { background: #1e3a8a; }
   .header-label { font-size: 16px; opacity: 0.9; margin-bottom: 6px; font-weight: 500; }
   .header-date { font-size: 30px; font-weight: 800; line-height: 1.1; word-wrap: break-word; }
   .header-sub { font-size: 14px; opacity: 0.85; margin-top: 6px; }
+  .header-edit-hint { font-size: 12px; opacity: 0.7; margin-top: 4px; font-style: italic; }
 
   /* Botão principal de adicionar */
   .add-btn { display: block; width: calc(100% - 24px); margin: 16px 12px; padding: 22px 16px; background: #16a34a; color: white; border: none; border-radius: 16px; font-size: 22px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 12px rgba(22,163,74,0.3); line-height: 1.2; }
   .add-btn:active { transform: scale(0.98); }
 
-  /* Status de login Google */
-  .google-status { margin: 0 12px 12px; padding: 12px; border-radius: 12px; font-size: 14px; text-align: center; }
-  .google-on { background: #dcfce7; color: #166534; }
-  .google-off { background: #fef3c7; color: #92400e; }
-  .google-btn { display: inline-block; margin-top: 8px; padding: 10px 18px; background: #1e40af; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  /* Toolbar de busca/histórico */
+  .toolbar { display: flex; gap: 8px; margin: 0 12px 12px; }
+  .toolbar-btn { flex: 1; padding: 14px; background: white; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; color: #374151; }
+  .toolbar-btn:active { background: #f3f4f6; }
+
+  /* Status de login */
+  .login-status { margin: 0 12px 12px; padding: 12px; border-radius: 12px; font-size: 14px; text-align: center; }
+  .login-on { background: #dcfce7; color: #166534; }
+  .login-off { background: #fef3c7; color: #92400e; }
+  .login-btn { display: inline-block; margin-top: 8px; padding: 10px 18px; background: #1e40af; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .logout-btn { display: inline-block; margin-top: 8px; padding: 6px 14px; background: transparent; color: #166534; border: 1px solid #166534; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
 
   /* Calendário */
   .calendar { margin: 16px 12px; background: white; border-radius: 16px; padding: 12px 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); overflow: hidden; }
@@ -45,7 +53,6 @@
   .cal-day .day-num { font-size: 14px; line-height: 1.2; }
   .cal-day .day-mark { font-size: 9px; line-height: 1; margin-top: 2px; opacity: 0.95; padding: 0 1px; text-align: center; word-break: break-word; overflow: hidden; max-width: 100%; }
 
-  /* Ajustes pra telas muito pequenas ou fonte aumentada */
   @media (max-width: 380px) {
     .cal-day { min-height: 36px; }
     .cal-day .day-num { font-size: 13px; }
@@ -55,6 +62,7 @@
     .cal-grid { gap: 1px; }
     .add-btn { font-size: 20px; padding: 20px 12px; }
     .header-date { font-size: 26px; }
+    .toolbar-btn { font-size: 14px; padding: 12px 8px; }
   }
 
   @media (max-width: 320px) {
@@ -66,62 +74,149 @@
   }
 
   /* Lista de trabalhos */
-  .jobs { margin: 20px 16px; }
-  .jobs-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; padding-left: 4px; }
-  .job-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; gap: 12px; cursor: pointer; }
+  .jobs { margin: 20px 12px; }
+  .jobs-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; padding-left: 4px; }
+  .job-card { background: white; border-radius: 12px; padding: 14px; margin-bottom: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); display: flex; gap: 12px; cursor: pointer; }
   .job-card:active { background: #f9fafb; }
   .job-info { flex: 1; min-width: 0; }
-  .job-client { font-size: 18px; font-weight: 700; color: #111; }
-  .job-details { font-size: 15px; color: #6b7280; margin-top: 4px; }
-  .job-color { width: 8px; height: 48px; border-radius: 4px; flex-shrink: 0; }
+  .job-date { font-size: 14px; font-weight: 700; color: #1e40af; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+  .job-pieces { font-size: 14px; color: #374151; line-height: 1.4; }
+  .job-piece-item { padding: 2px 0; display: flex; align-items: center; gap: 6px; }
+  .job-color { width: 6px; border-radius: 3px; flex-shrink: 0; }
   .empty-state { text-align: center; padding: 40px 20px; color: #9ca3af; font-size: 16px; }
+
+  /* Bolinha de status */
+  .status-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; display: inline-block; vertical-align: middle; border: 2px solid white; box-shadow: 0 0 0 1px rgba(0,0,0,0.15); }
+  .status-dot.casa { background: #8b5cf6; }
+  .status-dot.producao { background: #f59e0b; }
+  .status-dot.loja { background: #10b981; }
+  .status-dot.misto { background: linear-gradient(135deg, #8b5cf6 0%, #8b5cf6 33%, #f59e0b 33%, #f59e0b 66%, #10b981 66%); position: relative; }
+  .status-dot.misto::after { content: '⋯'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 10px; font-weight: 900; line-height: 1; }
+  .status-dot.large { width: 22px; height: 22px; }
+
+  /* Linha de status no header de detalhes do dia */
+  .day-status-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #f3f4f6; border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; }
+  .day-status-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+  .day-status-label { font-size: 14px; font-weight: 700; color: #374151; }
+  .day-status-value { font-size: 13px; color: #6b7280; }
+  .day-status-edit { background: #1e40af; color: white; border: none; padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
+  .day-status-edit:active { background: #1e3a8a; }
 
   /* Modal */
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: flex-end; justify-content: center; z-index: 100; }
   .modal-bg.open { display: flex; }
-  .modal { background: white; width: 100%; max-width: 600px; border-radius: 24px 24px 0 0; padding: 24px; max-height: 90vh; overflow-y: auto; animation: slideUp 0.25s ease-out; }
+  .modal { background: white; width: 100%; max-width: 600px; border-radius: 24px 24px 0 0; padding: 20px; max-height: 92vh; overflow-y: auto; animation: slideUp 0.25s ease-out; }
   @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-  .modal-title { font-size: 24px; font-weight: 800; margin-bottom: 20px; text-align: center; }
-  .modal-field { margin-bottom: 18px; }
-  .modal-label { display: block; font-size: 17px; font-weight: 600; margin-bottom: 8px; color: #374151; }
-  .modal-input { width: 100%; padding: 18px; font-size: 22px; border: 2px solid #d1d5db; border-radius: 12px; font-weight: 600; text-align: center; }
+  .modal-title { font-size: 22px; font-weight: 800; margin-bottom: 16px; text-align: center; }
+  .modal-field { margin-bottom: 14px; }
+  .modal-label { display: block; font-size: 15px; font-weight: 600; margin-bottom: 6px; color: #374151; }
+  .modal-input { width: 100%; padding: 14px; font-size: 18px; border: 2px solid #d1d5db; border-radius: 10px; font-weight: 600; }
+  .modal-input.text-input { font-size: 16px; font-weight: 500; }
+  .modal-input.center { text-align: center; }
   .modal-input:focus { outline: none; border-color: #1e40af; }
-  .modal-input.text-input { font-size: 18px; text-align: left; font-weight: 500; }
-  .modal-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
-  .btn { padding: 18px; border-radius: 12px; font-size: 18px; font-weight: 700; border: none; cursor: pointer; }
+  .modal-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+  .btn { padding: 16px; border-radius: 12px; font-size: 17px; font-weight: 700; border: none; cursor: pointer; }
   .btn-primary { background: #16a34a; color: white; }
   .btn-secondary { background: #e5e7eb; color: #374151; }
   .btn-warn { background: #f59e0b; color: white; }
   .btn-danger { background: #dc2626; color: white; }
   .btn:active { transform: scale(0.98); }
 
-  .stepper { display: flex; align-items: center; gap: 12px; }
-  .stepper button { width: 56px; height: 56px; border-radius: 12px; background: #e5e7eb; border: none; font-size: 28px; font-weight: 800; cursor: pointer; }
+  /* Botões grandes de status (no modal de escolha de status) */
+  .status-btn { display: flex; align-items: center; gap: 12px; padding: 18px; border-radius: 12px; border: none; cursor: pointer; font-size: 18px; font-weight: 800; color: white; text-align: left; }
+  .status-btn:active { transform: scale(0.98); }
+  .status-btn .dot { width: 24px; height: 24px; border-radius: 50%; background: white; flex-shrink: 0; }
+  .status-btn.casa { background: #8b5cf6; }
+  .status-btn.producao { background: #f59e0b; }
+  .status-btn.loja { background: #10b981; }
+
+  .stepper { display: flex; align-items: center; gap: 10px; }
+  .stepper button { width: 50px; height: 50px; border-radius: 10px; background: #e5e7eb; border: none; font-size: 26px; font-weight: 800; cursor: pointer; }
   .stepper button:active { background: #d1d5db; }
   .stepper input { flex: 1; }
 
-  .info-box { background: #eff6ff; border-left: 4px solid #1e40af; padding: 12px 14px; border-radius: 8px; font-size: 15px; color: #1e3a8a; margin-bottom: 16px; }
+  .info-box { background: #eff6ff; border-left: 4px solid #1e40af; padding: 12px 14px; border-radius: 8px; font-size: 14px; color: #1e3a8a; margin-bottom: 14px; }
+  .info-box strong { display: block; margin-bottom: 4px; font-size: 16px; }
 
-  .menu-icon { position: absolute; top: 20px; right: 16px; background: rgba(255,255,255,0.2); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; font-size: 20px; cursor: pointer; }
+  /* Container das peças individuais */
+  .piece-form { background: #f9fafb; border-radius: 12px; padding: 14px; margin-bottom: 12px; border: 2px solid #e5e7eb; }
+  .piece-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .piece-number { font-size: 16px; font-weight: 800; color: #1e40af; }
+  .piece-remove { background: #fee2e2; color: #dc2626; border: none; padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .piece-form .modal-field { margin-bottom: 10px; }
+  .piece-form .modal-input { padding: 10px; font-size: 15px; }
 
-  .header { position: relative; }
+  /* Detalhes do dia (modal de visualização) */
+  .day-details-job { background: #f9fafb; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+  .day-details-job-title { font-size: 15px; font-weight: 700; color: #1e40af; margin-bottom: 8px; }
+  .day-details-piece { background: white; border-radius: 8px; padding: 10px; margin-bottom: 6px; border-left: 3px solid #1e40af; position: relative; }
+  .day-details-piece-row { font-size: 14px; padding: 2px 0; }
+  .day-details-piece-row strong { color: #374151; }
+  .day-details-piece-status { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px dashed #e5e7eb; }
+  .day-details-piece-status .label { font-size: 13px; font-weight: 700; color: #374151; flex: 1; }
+  .day-details-piece-status .pencil { background: #f3f4f6; border: none; width: 30px; height: 30px; border-radius: 50%; font-size: 14px; cursor: pointer; flex-shrink: 0; }
+  .day-details-piece-status .pencil:active { background: #e5e7eb; }
+  .read-only .day-details-piece-status .pencil { display: none; }
+  .read-only .day-status-edit { display: none; }
+
+  /* Resultados de busca */
+  .search-result { background: white; border-radius: 10px; padding: 12px; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); cursor: pointer; }
+  .search-result-date { font-size: 13px; color: #6b7280; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+  .search-result-content { font-size: 15px; color: #111; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .search-result-content strong { color: #1e40af; }
+
+  /* Botão "Carregar mais" do histórico */
+  .load-more { margin-top: 12px; width: 100%; padding: 12px; background: #f3f4f6; border: 2px dashed #d1d5db; border-radius: 10px; font-size: 14px; font-weight: 700; color: #374151; cursor: pointer; }
+  .load-more:active { background: #e5e7eb; }
+
+  /* Read-only mode (cliente sem login) */
+  .read-only .add-btn { display: none; }
+  .read-only .header.editable { cursor: default; }
+  .read-only .header-edit-hint { display: none; }
+  .read-only .piece-remove { display: none; }
+  .read-only .edit-action-row { display: none; }
+
+  /* Loading inicial */
+  .loading-overlay { position: fixed; inset: 0; background: white; display: flex; align-items: center; justify-content: center; z-index: 200; flex-direction: column; gap: 16px; }
+  .loading-spinner { width: 40px; height: 40px; border: 4px solid #e5e7eb; border-top-color: #1e40af; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Legenda de status */
+  .status-legend { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 12px 12px; padding: 10px 12px; background: white; border-radius: 10px; font-size: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .status-legend-item { display: flex; align-items: center; gap: 5px; color: #374151; font-weight: 600; }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <button class="menu-icon" onclick="openSettings()">⚙</button>
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div style="color: #6b7280; font-size: 14px;">Carregando...</div>
+</div>
+
+<div class="header editable" id="header" onclick="onHeaderClick()">
   <div class="header-label">Próxima data livre</div>
-  <div class="header-date" id="nextFreeDate">Hoje</div>
-  <div class="header-sub" id="nextFreeSub">Sem trabalhos agendados</div>
+  <div class="header-date" id="nextFreeDate">—</div>
+  <div class="header-sub" id="nextFreeSub"></div>
+  <div class="header-edit-hint" id="headerHint">Toque para alterar</div>
 </div>
 
-<div id="googleStatus" class="google-status google-off">
-  <div>📅 Sincronização com Google Agenda desligada</div>
-  <button class="google-btn" onclick="loginGoogle()">Conectar Google Agenda</button>
+<div id="loginStatus" class="login-status login-off">
+  <div>Modo visualização</div>
+  <button class="login-btn" onclick="loginGoogle()">Entrar como costureira</button>
 </div>
 
-<button class="add-btn" onclick="openAddModal()">➕ ADICIONAR TRABALHO</button>
+<button class="add-btn" id="addBtn" onclick="openAddModal()">+ ADICIONAR TRABALHO</button>
+
+<div class="toolbar">
+  <button class="toolbar-btn" onclick="openSearchModal()">🔍 Buscar</button>
+  <button class="toolbar-btn" onclick="openHistoryModal()">📋 Histórico</button>
+</div>
+
+<div class="status-legend">
+  <div class="status-legend-item"><span class="status-dot casa"></span>Casa Jussara</div>
+  <div class="status-legend-item"><span class="status-dot producao"></span>Em Produção</div>
+  <div class="status-legend-item"><span class="status-dot loja"></span>Na Loja</div>
+</div>
 
 <div class="calendar">
   <div class="cal-header">
@@ -133,42 +228,30 @@
 </div>
 
 <div class="jobs">
-  <div class="jobs-title">Trabalhos atuais</div>
+  <div class="jobs-title">Trabalhos próximos</div>
   <div id="jobsList"></div>
 </div>
 
 <!-- Modal: Adicionar trabalho -->
 <div class="modal-bg" id="addModal">
   <div class="modal">
-    <div class="modal-title">Novo Trabalho</div>
+    <div class="modal-title" id="addModalTitle">Novo Trabalho</div>
+
+    <div class="modal-field">
+      <label class="modal-label">Data do trabalho</label>
+      <input class="modal-input text-input" type="date" id="addDate">
+    </div>
 
     <div class="modal-field">
       <label class="modal-label">Quantas peças?</label>
       <div class="stepper">
-        <button onclick="step('addPieces', -1)">−</button>
-        <input class="modal-input" type="number" id="addPieces" value="1" min="1">
-        <button onclick="step('addPieces', 1)">+</button>
+        <button onclick="changePieceCount(-1)">−</button>
+        <input class="modal-input center" type="number" id="addPieceCount" value="1" min="1" max="20" readonly>
+        <button onclick="changePieceCount(1)">+</button>
       </div>
     </div>
 
-    <div class="modal-field">
-      <label class="modal-label">Quantos dias vai levar?</label>
-      <div class="stepper">
-        <button onclick="step('addDays', -1)">−</button>
-        <input class="modal-input" type="number" id="addDays" value="1" min="1">
-        <button onclick="step('addDays', 1)">+</button>
-      </div>
-    </div>
-
-    <div class="modal-field">
-      <label class="modal-label">Cliente (opcional)</label>
-      <input class="modal-input text-input" type="text" id="addClient" placeholder="Nome do cliente">
-    </div>
-
-    <div class="modal-field">
-      <label class="modal-label">Começar em</label>
-      <input class="modal-input text-input" type="date" id="addStart">
-    </div>
+    <div id="piecesContainer"></div>
 
     <div class="modal-actions">
       <button class="btn btn-primary" onclick="saveJob()">SALVAR</button>
@@ -177,36 +260,83 @@
   </div>
 </div>
 
-<!-- Modal: Editar trabalho -->
-<div class="modal-bg" id="editModal">
+<!-- Modal: Detalhes do dia -->
+<div class="modal-bg" id="dayModal">
   <div class="modal">
-    <div class="modal-title" id="editTitle">Trabalho</div>
-    <div class="info-box" id="editInfo"></div>
+    <div class="modal-title" id="dayTitle">—</div>
 
-    <div class="modal-actions">
-      <button class="btn btn-primary" onclick="confirmAction('finish')">✅ TERMINEI HOJE</button>
-      <button class="btn btn-warn" onclick="openAtraso()">⏰ ATRASEI</button>
-      <button class="btn btn-danger" onclick="confirmAction('delete')">🗑️ APAGAR</button>
-      <button class="btn btn-secondary" onclick="closeModal('editModal')">Voltar</button>
+    <!-- Status geral do dia (com botão de mudar todas) -->
+    <div class="day-status-row" id="dayStatusRow">
+      <div class="day-status-info">
+        <span class="status-dot large" id="dayStatusDot"></span>
+        <div>
+          <div class="day-status-label" id="dayStatusLabel">—</div>
+          <div class="day-status-value" id="dayStatusValue">—</div>
+        </div>
+      </div>
+      <button class="day-status-edit" onclick="openBulkStatusModal()">Mudar todas</button>
+    </div>
+
+    <div id="dayDetails"></div>
+
+    <div class="modal-actions edit-action-row">
+      <button class="btn btn-warn" onclick="editDayJob()">✏️ Editar peças</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">🗑️ Apagar</button>
+    </div>
+    <div class="modal-actions" style="margin-top: 8px;">
+      <button class="btn btn-secondary" onclick="closeModal('dayModal')">Fechar</button>
     </div>
   </div>
 </div>
 
-<!-- Modal: Atraso -->
-<div class="modal-bg" id="atrasoModal">
+<!-- Modal: Editar próxima data livre -->
+<div class="modal-bg" id="nextFreeModal">
   <div class="modal">
-    <div class="modal-title">Quantos dias a mais?</div>
+    <div class="modal-title">Próxima Data Livre</div>
+    <div class="info-box">Defina a partir de quando você pode receber o próximo trabalho.</div>
     <div class="modal-field">
-      <div class="stepper">
-        <button onclick="step('atrasoDays', -1)">−</button>
-        <input class="modal-input" type="number" id="atrasoDays" value="1" min="1">
-        <button onclick="step('atrasoDays', 1)">+</button>
-      </div>
+      <label class="modal-label">Data</label>
+      <input class="modal-input text-input" type="date" id="nextFreeInput">
     </div>
     <div class="modal-actions">
-      <button class="btn btn-warn" onclick="confirmAction('atraso')">CONFIRMAR ATRASO</button>
-      <button class="btn btn-secondary" onclick="closeModal('atrasoModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveNextFree()">SALVAR</button>
+      <button class="btn btn-secondary" onclick="closeModal('nextFreeModal')">Cancelar</button>
     </div>
+  </div>
+</div>
+
+<!-- Modal: Buscar -->
+<div class="modal-bg" id="searchModal">
+  <div class="modal">
+    <div class="modal-title">🔍 Buscar Peças</div>
+    <div class="modal-field">
+      <input class="modal-input text-input" type="text" id="searchInput" placeholder="Nome do cliente, modelo ou serviço..." oninput="doSearch()">
+    </div>
+    <div id="searchResults" style="max-height: 50vh; overflow-y: auto;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('searchModal')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Histórico -->
+<div class="modal-bg" id="historyModal">
+  <div class="modal">
+    <div class="modal-title">📋 Histórico</div>
+    <div class="modal-field">
+      <label class="modal-label">De:</label>
+      <input class="modal-input text-input" type="date" id="histStart">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Até:</label>
+      <input class="modal-input text-input" type="date" id="histEnd">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="exportHistory()">📥 Exportar (CSV)</button>
+      <button class="btn btn-secondary" onclick="viewHistory()">👁️ Ver na tela</button>
+      <button class="btn btn-secondary" onclick="closeModal('historyModal')">Fechar</button>
+    </div>
+    <div id="historyResults" style="margin-top: 16px; max-height: 40vh; overflow-y: auto;"></div>
   </div>
 </div>
 
@@ -216,162 +346,237 @@
     <div class="modal-title" id="confirmTitle">Tem certeza?</div>
     <div class="info-box" id="confirmText"></div>
     <div class="modal-actions">
-      <button class="btn btn-primary" id="confirmYes">SIM, CONFIRMAR</button>
+      <button class="btn btn-danger" id="confirmYes">SIM, CONFIRMAR</button>
       <button class="btn btn-secondary" onclick="closeModal('confirmModal')">Não, voltar</button>
     </div>
   </div>
 </div>
 
-<!-- Modal: Configurações -->
-<div class="modal-bg" id="settingsModal">
+<!-- Modal: Escolher status (individual ou em massa) -->
+<div class="modal-bg" id="statusModal">
   <div class="modal">
-    <div class="modal-title">Configurações</div>
-    <div class="info-box" id="settingsInfo">Conta Google: nenhuma conectada</div>
+    <div class="modal-title" id="statusModalTitle">Mudar status</div>
+    <div class="info-box" id="statusModalInfo" style="display:none;"></div>
     <div class="modal-actions">
-      <button class="btn btn-warn" onclick="logoutGoogle()">Desconectar Google</button>
-      <button class="btn btn-secondary" onclick="exportData()">Exportar dados (backup)</button>
-      <button class="btn btn-secondary" onclick="closeModal('settingsModal')">Fechar</button>
+      <button class="status-btn casa" onclick="applyStatusChoice('casa')">
+        <span class="dot"></span>
+        <span>Casa Jussara</span>
+      </button>
+      <button class="status-btn producao" onclick="applyStatusChoice('producao')">
+        <span class="dot"></span>
+        <span>Em Produção</span>
+      </button>
+      <button class="status-btn loja" onclick="applyStatusChoice('loja')">
+        <span class="dot"></span>
+        <span>Na Loja</span>
+      </button>
+      <button class="btn btn-secondary" onclick="closeModal('statusModal')">Cancelar</button>
     </div>
   </div>
 </div>
 
-<script>
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
 /* ============================================================
-   ⚠️⚠️⚠️  CONFIGURAÇÃO — ALTERE APENAS AS 2 LINHAS ABAIXO ⚠️⚠️⚠️
+   ⚠️⚠️⚠️ CONFIGURAÇÃO FIREBASE — COLE AQUI SEU CONFIG ⚠️⚠️⚠️
    ============================================================
-
-   COMO PREENCHER:
-
-   1) GOOGLE_CLIENT_ID:
-      - Vá em console.cloud.google.com → APIs e serviços → Credenciais
-      - Copie o "ID do cliente" (termina com .apps.googleusercontent.com)
-      - Cole entre as aspas abaixo, APAGANDO TUDO que está lá
-      - Exemplo correto:
-        const GOOGLE_CLIENT_ID = '12345-abc.apps.googleusercontent.com';
-
-   2) GOOGLE_API_KEY:
-      - Mesma tela de Credenciais
-      - Copie a "Chave de API" (começa com AIzaSy...)
-      - Cole entre as aspas abaixo, APAGANDO TUDO que está lá
-      - Exemplo correto:
-        const GOOGLE_API_KEY = 'AIzaSyAbc123Def456';
-
-   ⚠️ MANTENHA AS ASPAS ' ' NO INÍCIO E NO FIM
-   ⚠️ NÃO ALTERE NADA ABAIXO DA LINHA "FIM DA CONFIGURAÇÃO"
+   Como obter:
+   1. Acesse: https://console.firebase.google.com
+   2. Crie um projeto (ou abra o existente)
+   3. Em "Configurações do projeto" (ícone de engrenagem)
+   4. Role até "Seus apps" e clique em "Web" (</>)
+   5. Registre o app e copie o objeto firebaseConfig
+   6. Cole substituindo os valores abaixo
    ============================================================ */
 
-const GOOGLE_CLIENT_ID = '473462685604-r1feu3rngscp8k95b8u0emoh6l4ti37t.apps.googleusercontent.com';
-
-const GOOGLE_API_KEY = 'AIzaSyDydi5B_9sRZb8h7IMLx5Y6zTCkEnTcSU4';
+const firebaseConfig = {
+  apiKey: "AIzaSyCtZ5e5CNFdvAhA2x86rAfFzRDNXDQemHE",
+  authDomain: "agenda-costureira-5b878.firebaseapp.com",
+  projectId: "agenda-costureira-5b878",
+  storageBucket: "agenda-costureira-5b878.firebasestorage.app",
+  messagingSenderId: "831191074393",
+  appId: "1:831191074393:web:2612a48e4543bd61edd348"
+};
 
 /* ============================================================
-   ⛔ FIM DA CONFIGURAÇÃO — NÃO MEXA EM NADA ABAIXO ⛔
+   ⛔ EMAILS AUTORIZADOS — APENAS ESTES PODEM EDITAR ⛔
+   ============================================================
+   - Costureira: faz a gestão diária
+   - Admin: backup, pode editar caso a costureira perca acesso
+   IMPORTANTE: Os mesmos emails precisam estar nas REGRAS do
+   Firestore (veja GUIA-FIREBASE.md). Se diferirem, login parece
+   funcionar mas escrita falha com "permission denied".
+   ============================================================ */
+const EMAIL_COSTUREIRA = "jussarafspacheco1@gmail.com";
+const EMAIL_ADMIN = "joaopcostaferreira@gmail.com";
+const EMAILS_AUTORIZADOS = [EMAIL_COSTUREIRA, EMAIL_ADMIN];
+
+/* ============================================================
+   ⛔ NÃO MEXA EM NADA ABAIXO ⛔
    ============================================================ */
 
-const CALENDAR_ID = 'primary';
-const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+
+// Estado global
+window.appState = {
+  user: null,
+  isCostureira: false,
+  jobs: [],
+  nextFree: null,
+  viewDate: new Date(),
+  selectedDayJobId: null,
+  selectedPieceIndex: null,   // null = está mudando o dia inteiro; número = peça específica
+  pieceCount: 1,
+  historyMonths: 12           // janela inicial do histórico em meses
+};
 
 // Cores para os blocos no calendário
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#ef4444', '#6366f1'];
 
-// Estado da aplicação
-let jobs = JSON.parse(localStorage.getItem('jobs') || '[]');
-let viewDate = new Date();
-let pendingAction = null;
-let editingJobId = null;
-let googleToken = null;
-let tokenClient = null;
-let gapiReady = false;
-
-// === Persistência ===
-function saveJobs() {
-  localStorage.setItem('jobs', JSON.stringify(jobs));
-}
-
-// === Datas ===
-function ymd(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-function parseYmd(str) {
-  const [y, m, d] = str.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
-
-function addDays(date, n) {
-  const d = new Date(date);
-  d.setDate(d.getDate() + n);
-  return d;
-}
-
-function formatPretty(date) {
-  const meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-  const dias = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
-  return `${date.getDate()} de ${meses[date.getMonth()]}`;
-}
-
-function formatDow(date) {
-  const dias = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
-  return dias[date.getDay()];
-}
-
-// === Lógica de negócio ===
-function getJobDates(job) {
-  const start = parseYmd(job.start);
-  const dates = [];
-  for (let i = 0; i < job.days; i++) {
-    dates.push(ymd(addDays(start, i)));
+// === Status helpers ===
+const STATUS = {
+  casa:     { label: 'Casa Jussara', color: '#8b5cf6' },
+  producao: { label: 'Em Produção',  color: '#f59e0b' },
+  loja:     { label: 'Na Loja',      color: '#10b981' }
+};
+function statusLabel(s) { return STATUS[s]?.label || 'Casa Jussara'; }
+function getJobAggregateStatus(job) {
+  // Retorna 'casa' | 'producao' | 'loja' se todas as peças têm o mesmo status, senão 'misto'.
+  if (!job.pieces || job.pieces.length === 0) return 'casa';
+  const first = job.pieces[0].status || 'casa';
+  for (const p of job.pieces) {
+    if ((p.status || 'casa') !== first) return 'misto';
   }
-  return dates;
+  return first;
+}
+function statusBreakdown(job) {
+  // Retorna texto tipo "2 em Casa, 1 em Produção"
+  const counts = { casa: 0, producao: 0, loja: 0 };
+  job.pieces.forEach(p => { counts[p.status || 'casa']++; });
+  const parts = [];
+  if (counts.casa) parts.push(`${counts.casa} ${STATUS.casa.label}`);
+  if (counts.producao) parts.push(`${counts.producao} ${STATUS.producao.label}`);
+  if (counts.loja) parts.push(`${counts.loja} ${STATUS.loja.label}`);
+  return parts.join(' • ');
 }
 
-function isDateBusy(dateStr) {
-  return jobs.find(j => getJobDates(j).includes(dateStr));
-}
-
-function getNextFreeDate() {
-  let d = new Date();
-  d.setHours(0,0,0,0);
-  for (let i = 0; i < 365; i++) {
-    if (!isDateBusy(ymd(d))) return d;
-    d = addDays(d, 1);
+// === Auth ===
+window.loginGoogle = async function() {
+  try {
+    const result = await signInWithPopup(auth, provider);
+    if (!EMAILS_AUTORIZADOS.includes(result.user.email)) {
+      await signOut(auth);
+      alert('Apenas usuários autorizados podem entrar. Você continua no modo visualização.');
+    }
+  } catch (e) {
+    console.error(e);
+    alert('Erro ao fazer login: ' + e.message);
   }
-  return d;
+};
+
+window.logoutGoogle = async function() {
+  await signOut(auth);
+};
+
+onAuthStateChanged(auth, (user) => {
+  appState.user = user;
+  appState.isCostureira = user && EMAILS_AUTORIZADOS.includes(user.email);
+  document.body.classList.toggle('read-only', !appState.isCostureira);
+  renderLoginStatus();
+  render();
+});
+
+// === Firestore: leitura em tempo real ===
+// IMPORTANTE: o onSnapshot escuta SÓ dos últimos N meses (definidos em historyMonths).
+// Trabalhos mais antigos só são carregados sob demanda no histórico.
+let jobsUnsub = null;
+
+function listenToData() {
+  // Cancelar listener anterior se houver
+  if (jobsUnsub) { jobsUnsub(); jobsUnsub = null; }
+
+  // Calcula data limite (hoje - historyMonths)
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - appState.historyMonths);
+  const cutoffStr = ymd(cutoff);
+
+  // Query: só jobs com data >= cutoff
+  const jobsCol = collection(db, "jobs");
+  const q = query(jobsCol, where("date", ">=", cutoffStr));
+
+  jobsUnsub = onSnapshot(q, (snapshot) => {
+    appState.jobs = [];
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      // Garantir que toda peça tem campo status (default casa)
+      const pieces = (data.pieces || []).map(p => ({
+        client: p.client || '',
+        model: p.model || '',
+        service: p.service || '',
+        status: p.status || 'casa'
+      }));
+      appState.jobs.push({ id: docSnap.id, date: data.date, pieces });
+    });
+    appState.jobs.sort((a, b) => a.date.localeCompare(b.date));
+    render();
+    document.getElementById('loadingOverlay').style.display = 'none';
+  }, (err) => {
+    console.error('Erro lendo jobs:', err);
+    document.getElementById('loadingOverlay').style.display = 'none';
+  });
+
+  // Próxima data livre (não muda)
+  onSnapshot(doc(db, "config", "nextFree"), (docSnap) => {
+    appState.nextFree = docSnap.exists() ? docSnap.data().date : null;
+    renderHeader();
+  });
 }
 
-function getJobColor(jobId) {
-  const idx = jobs.findIndex(j => j.id === jobId);
-  return COLORS[idx % COLORS.length];
-}
+listenToData();
 
-// === Renderização ===
+// === Render ===
 function render() {
   renderHeader();
   renderCalendar();
   renderJobs();
-  renderGoogleStatus();
+}
+
+function renderLoginStatus() {
+  const el = document.getElementById('loginStatus');
+  if (appState.isCostureira) {
+    const nome = appState.user.email === EMAIL_ADMIN ? '(admin)' : '(costureira)';
+    el.className = 'login-status login-on';
+    el.innerHTML = `<div>✅ Logada ${nome}</div><button class="logout-btn" onclick="logoutGoogle()">Sair</button>`;
+  } else {
+    el.className = 'login-status login-off';
+    el.innerHTML = `<div>👀 Modo visualização</div><button class="login-btn" onclick="loginGoogle()">Entrar como costureira</button>`;
+  }
 }
 
 function renderHeader() {
-  const next = getNextFreeDate();
-  const today = new Date();
-  today.setHours(0,0,0,0);
-
-  document.getElementById('nextFreeDate').textContent = formatPretty(next);
-  if (ymd(next) === ymd(today)) {
-    document.getElementById('nextFreeSub').textContent = 'Hoje — pode receber trabalho!';
+  const dateStr = appState.nextFree;
+  if (!dateStr) {
+    document.getElementById('nextFreeDate').textContent = 'Não definida';
+    document.getElementById('nextFreeSub').textContent = appState.isCostureira ? 'Toque para definir' : '';
   } else {
-    document.getElementById('nextFreeSub').textContent = formatDow(next);
+    const d = parseYmd(dateStr);
+    document.getElementById('nextFreeDate').textContent = formatPretty(d);
+    document.getElementById('nextFreeSub').textContent = formatDow(d);
   }
+  document.getElementById('headerHint').style.display = appState.isCostureira ? 'block' : 'none';
 }
 
 function renderCalendar() {
   const grid = document.getElementById('calGrid');
   const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  document.getElementById('calTitle').textContent = `${meses[viewDate.getMonth()]} ${viewDate.getFullYear()}`;
+  document.getElementById('calTitle').textContent = `${meses[appState.viewDate.getMonth()]} ${appState.viewDate.getFullYear()}`;
 
   grid.innerHTML = '';
   ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].forEach(d => {
@@ -381,8 +586,8 @@ function renderCalendar() {
     grid.appendChild(el);
   });
 
-  const firstDay = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
-  const lastDay = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0);
+  const firstDay = new Date(appState.viewDate.getFullYear(), appState.viewDate.getMonth(), 1);
+  const lastDay = new Date(appState.viewDate.getFullYear(), appState.viewDate.getMonth() + 1, 0);
   const startDow = firstDay.getDay();
   const today = ymd(new Date());
 
@@ -393,9 +598,9 @@ function renderCalendar() {
   }
 
   for (let day = 1; day <= lastDay.getDate(); day++) {
-    const date = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
+    const date = new Date(appState.viewDate.getFullYear(), appState.viewDate.getMonth(), day);
     const dateStr = ymd(date);
-    const job = isDateBusy(dateStr);
+    const job = appState.jobs.find(j => j.date === dateStr);
     const el = document.createElement('div');
     el.className = 'cal-day';
 
@@ -405,7 +610,7 @@ function renderCalendar() {
       el.classList.add('busy');
       el.style.background = getJobColor(job.id);
       el.style.color = 'white';
-      el.onclick = () => openEditModal(job.id);
+      el.onclick = () => openDayModal(job.id);
 
       const numEl = document.createElement('div');
       numEl.className = 'day-num';
@@ -414,8 +619,8 @@ function renderCalendar() {
 
       const markEl = document.createElement('div');
       markEl.className = 'day-mark';
-      const label = job.client ? job.client : `${job.pieces} pç`;
-      markEl.textContent = label.length > 8 ? label.substring(0, 7) + '…' : label;
+      const firstClient = job.pieces[0]?.client || `${job.pieces.length}pç`;
+      markEl.textContent = firstClient.length > 8 ? firstClient.substring(0, 7) + '…' : firstClient;
       el.appendChild(markEl);
     } else {
       const numEl = document.createElement('div');
@@ -431,21 +636,18 @@ function renderCalendar() {
 function renderJobs() {
   const list = document.getElementById('jobsList');
   const today = ymd(new Date());
-  const activeJobs = jobs.filter(j => {
-    const lastDay = ymd(addDays(parseYmd(j.start), j.days - 1));
-    return lastDay >= today;
-  }).sort((a, b) => a.start.localeCompare(b.start));
+  const upcoming = appState.jobs.filter(j => j.date >= today).sort((a,b) => a.date.localeCompare(b.date)).slice(0, 10);
 
-  if (activeJobs.length === 0) {
-    list.innerHTML = '<div class="empty-state">Nenhum trabalho agendado.<br>Toque no botão verde acima para adicionar.</div>';
+  if (upcoming.length === 0) {
+    list.innerHTML = '<div class="empty-state">Nenhum trabalho próximo.</div>';
     return;
   }
 
   list.innerHTML = '';
-  activeJobs.forEach(job => {
+  upcoming.forEach(job => {
     const card = document.createElement('div');
     card.className = 'job-card';
-    card.onclick = () => openEditModal(job.id);
+    card.onclick = () => openDayModal(job.id);
 
     const color = document.createElement('div');
     color.className = 'job-color';
@@ -453,14 +655,21 @@ function renderJobs() {
 
     const info = document.createElement('div');
     info.className = 'job-info';
+    const d = parseYmd(job.date);
+    const aggStatus = getJobAggregateStatus(job);
 
-    const startD = parseYmd(job.start);
-    const endD = addDays(startD, job.days - 1);
-    const clientText = job.client ? job.client : 'Sem cliente';
+    let piecesHtml = job.pieces.map(p => {
+      const parts = [p.client, p.model, p.service].filter(Boolean).join(' • ');
+      const dotClass = p.status || 'casa';
+      return `<div class="job-piece-item"><span class="status-dot ${dotClass}"></span>${parts || '(peça sem detalhes)'}</div>`;
+    }).join('');
 
     info.innerHTML = `
-      <div class="job-client">${clientText}</div>
-      <div class="job-details">${job.pieces} ${job.pieces === 1 ? 'peça' : 'peças'} • ${formatPretty(startD)} até ${formatPretty(endD)}</div>
+      <div class="job-date">
+        <span class="status-dot ${aggStatus}"></span>
+        ${formatPretty(d)} (${formatDow(d)})
+      </div>
+      <div class="job-pieces">${piecesHtml}</div>
     `;
 
     card.appendChild(color);
@@ -469,294 +678,493 @@ function renderJobs() {
   });
 }
 
-function renderGoogleStatus() {
-  const el = document.getElementById('googleStatus');
-  if (googleToken) {
-    el.className = 'google-status google-on';
-    el.innerHTML = '✅ Sincronizando com Google Agenda';
-  } else {
-    el.className = 'google-status google-off';
-    el.innerHTML = '<div>📅 Sincronização com Google Agenda desligada</div><button class="google-btn" onclick="loginGoogle()">Conectar Google Agenda</button>';
-  }
+// === Datas ===
+function ymd(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+function parseYmd(str) {
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+function formatPretty(date) {
+  const meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  return `${date.getDate()} de ${meses[date.getMonth()]}`;
+}
+function formatDow(date) {
+  const dias = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  return dias[date.getDay()];
+}
+function getJobColor(jobId) {
+  const idx = appState.jobs.findIndex(j => j.id === jobId);
+  return COLORS[idx % COLORS.length];
 }
 
 // === Modais ===
-function openAddModal() {
-  document.getElementById('addPieces').value = 1;
-  document.getElementById('addDays').value = 1;
-  document.getElementById('addClient').value = '';
-  document.getElementById('addStart').value = ymd(getNextFreeDate());
-  document.getElementById('addModal').classList.add('open');
-}
-
-function openEditModal(jobId) {
-  editingJobId = jobId;
-  const job = jobs.find(j => j.id === jobId);
-  if (!job) return;
-  const startD = parseYmd(job.start);
-  const endD = addDays(startD, job.days - 1);
-  document.getElementById('editTitle').textContent = job.client || 'Trabalho';
-  document.getElementById('editInfo').innerHTML = `<strong>${job.pieces} ${job.pieces === 1 ? 'peça' : 'peças'}</strong><br>${formatPretty(startD)} até ${formatPretty(endD)}<br>${job.days} ${job.days === 1 ? 'dia' : 'dias'} de trabalho`;
-  document.getElementById('editModal').classList.add('open');
-}
-
-function openAtraso() {
-  document.getElementById('atrasoDays').value = 1;
-  closeModal('editModal');
-  document.getElementById('atrasoModal').classList.add('open');
-}
-
-function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
-}
-
-function step(inputId, delta) {
-  const inp = document.getElementById(inputId);
-  const val = Math.max(1, parseInt(inp.value || '1') + delta);
-  inp.value = val;
-}
-
-// === Ações ===
-async function saveJob() {
-  const pieces = parseInt(document.getElementById('addPieces').value) || 1;
-  const days = parseInt(document.getElementById('addDays').value) || 1;
-  const client = document.getElementById('addClient').value.trim();
-  const start = document.getElementById('addStart').value;
-
-  if (!start) { alert('Escolha a data de início'); return; }
-
-  const job = {
-    id: 'job_' + Date.now(),
-    pieces, days, client, start,
-    googleEventId: null
-  };
-  jobs.push(job);
-  saveJobs();
-  closeModal('addModal');
-
-  if (googleToken) {
-    try {
-      const eventId = await gcalCreate(job);
-      job.googleEventId = eventId;
-      saveJobs();
-    } catch (e) { console.error(e); alert('Salvo aqui, mas falhou ao enviar pro Google Agenda. Tente conectar de novo.'); }
-  }
-
-  render();
-}
-
-function confirmAction(action) {
-  const job = jobs.find(j => j.id === editingJobId);
-  if (!job) return;
-
-  let title = '';
-  let text = '';
-
-  if (action === 'finish') {
-    title = 'Terminar hoje?';
-    text = `Vai marcar que terminou <strong>${job.client || 'este trabalho'}</strong> hoje. O bloco no calendário vai encurtar até hoje.`;
-  } else if (action === 'delete') {
-    title = 'Apagar trabalho?';
-    text = `Vai apagar <strong>${job.client || 'este trabalho'}</strong> de vez. Não dá pra desfazer.`;
-  } else if (action === 'atraso') {
-    const dias = parseInt(document.getElementById('atrasoDays').value) || 1;
-    title = `Atrasar ${dias} dia${dias > 1 ? 's' : ''}?`;
-    text = `Vai estender <strong>${job.client || 'este trabalho'}</strong> em <strong>${dias} dia${dias > 1 ? 's' : ''}</strong>.`;
-    pendingAction = { type: 'atraso', dias };
-  }
-
-  if (action === 'finish') pendingAction = { type: 'finish' };
-  if (action === 'delete') pendingAction = { type: 'delete' };
-
-  document.getElementById('confirmTitle').textContent = title;
-  document.getElementById('confirmText').innerHTML = text;
-  document.getElementById('confirmYes').onclick = executeAction;
-
-  closeModal('editModal');
-  closeModal('atrasoModal');
-  document.getElementById('confirmModal').classList.add('open');
-}
-
-async function executeAction() {
-  const job = jobs.find(j => j.id === editingJobId);
-  if (!job || !pendingAction) return;
-
-  if (pendingAction.type === 'finish') {
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const startD = parseYmd(job.start);
-    const diffDays = Math.floor((today - startD) / (1000 * 60 * 60 * 24)) + 1;
-    job.days = Math.max(1, diffDays);
-
-    if (googleToken && job.googleEventId) {
-      try { await gcalUpdate(job); } catch (e) { console.error(e); }
-    }
-  } else if (pendingAction.type === 'delete') {
-    if (googleToken && job.googleEventId) {
-      try { await gcalDelete(job.googleEventId); } catch (e) { console.error(e); }
-    }
-    jobs = jobs.filter(j => j.id !== job.id);
-  } else if (pendingAction.type === 'atraso') {
-    job.days += pendingAction.dias;
-    if (googleToken && job.googleEventId) {
-      try { await gcalUpdate(job); } catch (e) { console.error(e); }
-    }
-  }
-
-  saveJobs();
-  pendingAction = null;
-  editingJobId = null;
-  closeModal('confirmModal');
-  render();
-}
-
-function changeMonth(delta) {
-  viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + delta, 1);
+window.changeMonth = function(delta) {
+  appState.viewDate = new Date(appState.viewDate.getFullYear(), appState.viewDate.getMonth() + delta, 1);
   renderCalendar();
+};
+
+window.onHeaderClick = function() {
+  if (!appState.isCostureira) return;
+  document.getElementById('nextFreeInput').value = appState.nextFree || ymd(new Date());
+  document.getElementById('nextFreeModal').classList.add('open');
+};
+
+window.saveNextFree = async function() {
+  const val = document.getElementById('nextFreeInput').value;
+  if (!val) { alert('Escolha uma data'); return; }
+  try {
+    await setDoc(doc(db, "config", "nextFree"), { date: val });
+    closeModal('nextFreeModal');
+  } catch (e) {
+    alert('Erro ao salvar: ' + e.message);
+  }
+};
+
+window.openAddModal = function() {
+  if (!appState.isCostureira) { alert('Faça login como costureira para adicionar trabalhos.'); return; }
+  appState.selectedDayJobId = null;
+  document.getElementById('addModalTitle').textContent = 'Novo Trabalho';
+  document.getElementById('addDate').value = ymd(new Date());
+  document.getElementById('addPieceCount').value = 1;
+  appState.pieceCount = 1;
+  renderPieceForms();
+  document.getElementById('addModal').classList.add('open');
+};
+
+window.changePieceCount = function(delta) {
+  const newCount = Math.max(1, Math.min(20, appState.pieceCount + delta));
+  appState.pieceCount = newCount;
+  document.getElementById('addPieceCount').value = newCount;
+  renderPieceForms();
+};
+
+function renderPieceForms() {
+  const container = document.getElementById('piecesContainer');
+  // Salvar valores existentes
+  const existingValues = [];
+  container.querySelectorAll('.piece-form').forEach((form, idx) => {
+    existingValues[idx] = {
+      client: form.querySelector('.p-client')?.value || '',
+      model: form.querySelector('.p-model')?.value || '',
+      service: form.querySelector('.p-service')?.value || ''
+    };
+  });
+
+  container.innerHTML = '';
+  for (let i = 0; i < appState.pieceCount; i++) {
+    const v = existingValues[i] || { client: '', model: '', service: '' };
+    const div = document.createElement('div');
+    div.className = 'piece-form';
+    div.innerHTML = `
+      <div class="piece-header">
+        <div class="piece-number">Peça ${i + 1}</div>
+      </div>
+      <div class="modal-field">
+        <label class="modal-label">Nome do Cliente</label>
+        <input class="modal-input text-input p-client" type="text" value="${escapeHtml(v.client)}" placeholder="Ex: Maria">
+      </div>
+      <div class="modal-field">
+        <label class="modal-label">Modelo</label>
+        <input class="modal-input text-input p-model" type="text" value="${escapeHtml(v.model)}" placeholder="Ex: Calça jeans">
+      </div>
+      <div class="modal-field">
+        <label class="modal-label">Serviço</label>
+        <input class="modal-input text-input p-service" type="text" value="${escapeHtml(v.service)}" placeholder="Ex: Bainha">
+      </div>
+    `;
+    container.appendChild(div);
+  }
 }
 
-// === Configurações ===
-function openSettings() {
-  const info = googleToken
-    ? '✅ Google Agenda conectado e sincronizando'
-    : '⚠️ Google Agenda não conectado';
-  document.getElementById('settingsInfo').innerHTML = info;
-  document.getElementById('settingsModal').classList.add('open');
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-function exportData() {
-  const data = JSON.stringify(jobs, null, 2);
-  const blob = new Blob([data], { type: 'application/json' });
+window.saveJob = async function() {
+  const date = document.getElementById('addDate').value;
+  if (!date) { alert('Escolha a data'); return; }
+
+  const newPieces = [];
+  document.querySelectorAll('#piecesContainer .piece-form').forEach(form => {
+    newPieces.push({
+      client: form.querySelector('.p-client').value.trim(),
+      model: form.querySelector('.p-model').value.trim(),
+      service: form.querySelector('.p-service').value.trim(),
+      status: 'casa'   // default ao criar peça
+    });
+  });
+
+  if (newPieces.length === 0) { alert('Adicione pelo menos uma peça'); return; }
+
+  try {
+    if (appState.selectedDayJobId) {
+      // Edição: preserva os status existentes pelas peças que ainda existem (mesma posição)
+      const existingJob = appState.jobs.find(j => j.id === appState.selectedDayJobId);
+      const merged = newPieces.map((np, i) => ({
+        ...np,
+        status: existingJob?.pieces[i]?.status || 'casa'
+      }));
+      await setDoc(doc(db, "jobs", appState.selectedDayJobId), { date, pieces: merged });
+      appState.selectedDayJobId = null;
+      closeModal('addModal');
+      return;
+    }
+
+    // Verifica se já existe trabalho nessa data
+    const existing = appState.jobs.find(j => j.date === date);
+    if (existing) {
+      // Mostra modal de confirmação customizado
+      document.getElementById('confirmTitle').textContent = 'Já existe trabalho nessa data';
+      document.getElementById('confirmText').innerHTML = `<strong>Juntar peças?</strong>Já existe um trabalho em ${formatPretty(parseYmd(date))}. Deseja adicionar essas peças ao trabalho existente?`;
+      document.getElementById('confirmYes').textContent = 'SIM, JUNTAR';
+      document.getElementById('confirmYes').className = 'btn btn-primary';
+      document.getElementById('confirmYes').onclick = async () => {
+        try {
+          const merged = [...existing.pieces, ...newPieces];
+          await setDoc(doc(db, "jobs", existing.id), { date, pieces: merged });
+          closeModal('confirmModal');
+          closeModal('addModal');
+        } catch (e) { alert('Erro: ' + e.message); }
+      };
+      document.getElementById('confirmModal').classList.add('open');
+      return;
+    }
+
+    // Caso normal: novo trabalho
+    const id = 'job_' + Date.now();
+    await setDoc(doc(db, "jobs", id), { date, pieces: newPieces });
+    closeModal('addModal');
+  } catch (e) {
+    alert('Erro ao salvar: ' + e.message);
+  }
+};
+
+window.openDayModal = function(jobId) {
+  const job = appState.jobs.find(j => j.id === jobId);
+  if (!job) return;
+  appState.selectedDayJobId = jobId;
+  const d = parseYmd(job.date);
+  document.getElementById('dayTitle').textContent = `${formatPretty(d)} (${formatDow(d)})`;
+
+  // Status agregado do dia
+  const agg = getJobAggregateStatus(job);
+  const statusDot = document.getElementById('dayStatusDot');
+  statusDot.className = `status-dot large ${agg}`;
+  if (agg === 'misto') {
+    document.getElementById('dayStatusLabel').textContent = 'Status misto';
+    document.getElementById('dayStatusValue').textContent = statusBreakdown(job);
+  } else {
+    document.getElementById('dayStatusLabel').textContent = statusLabel(agg);
+    document.getElementById('dayStatusValue').textContent = `${job.pieces.length} ${job.pieces.length === 1 ? 'peça' : 'peças'}`;
+  }
+
+  // Lista de peças com bolinha + lápis (se logada)
+  const details = document.getElementById('dayDetails');
+  let html = '';
+  job.pieces.forEach((p, idx) => {
+    const st = p.status || 'casa';
+    html += `<div class="day-details-piece">
+      <div class="day-details-piece-status">
+        <span class="status-dot ${st}"></span>
+        <span class="label">Peça ${idx + 1} — ${statusLabel(st)}</span>
+        <button class="pencil" onclick="openPieceStatusModal(${idx})" title="Mudar status">✏️</button>
+      </div>
+      <div class="day-details-piece-row"><strong>Cliente:</strong> ${escapeHtml(p.client) || '(não informado)'}</div>
+      <div class="day-details-piece-row"><strong>Modelo:</strong> ${escapeHtml(p.model) || '(não informado)'}</div>
+      <div class="day-details-piece-row"><strong>Serviço:</strong> ${escapeHtml(p.service) || '(não informado)'}</div>
+    </div>`;
+  });
+  details.innerHTML = html;
+  document.getElementById('dayModal').classList.add('open');
+};
+
+window.editDayJob = function() {
+  const job = appState.jobs.find(j => j.id === appState.selectedDayJobId);
+  if (!job) return;
+  closeModal('dayModal');
+  document.getElementById('addModalTitle').textContent = 'Editar Trabalho';
+  document.getElementById('addDate').value = job.date;
+  document.getElementById('addPieceCount').value = job.pieces.length;
+  appState.pieceCount = job.pieces.length;
+  renderPieceForms();
+  document.querySelectorAll('#piecesContainer .piece-form').forEach((form, idx) => {
+    const p = job.pieces[idx];
+    form.querySelector('.p-client').value = p.client || '';
+    form.querySelector('.p-model').value = p.model || '';
+    form.querySelector('.p-service').value = p.service || '';
+  });
+  document.getElementById('addModal').classList.add('open');
+};
+
+window.confirmDelete = function() {
+  const job = appState.jobs.find(j => j.id === appState.selectedDayJobId);
+  if (!job) return;
+  document.getElementById('confirmTitle').textContent = 'Apagar trabalho?';
+  document.getElementById('confirmText').innerHTML = `<strong>Apagar este trabalho?</strong> Os dados serão removidos permanentemente.`;
+  document.getElementById('confirmYes').textContent = 'SIM, APAGAR';
+  document.getElementById('confirmYes').className = 'btn btn-danger';
+  document.getElementById('confirmYes').onclick = async () => {
+    try {
+      await deleteDoc(doc(db, "jobs", appState.selectedDayJobId));
+      appState.selectedDayJobId = null;
+      closeModal('confirmModal');
+      closeModal('dayModal');
+    } catch (e) {
+      alert('Erro ao apagar: ' + e.message);
+    }
+  };
+  closeModal('dayModal');
+  document.getElementById('confirmModal').classList.add('open');
+};
+
+window.closeModal = function(id) {
+  document.getElementById(id).classList.remove('open');
+};
+
+// === Status: individual e em massa ===
+window.openPieceStatusModal = function(pieceIndex) {
+  if (!appState.isCostureira) return;
+  appState.selectedPieceIndex = pieceIndex;
+  const job = appState.jobs.find(j => j.id === appState.selectedDayJobId);
+  if (!job) return;
+  const p = job.pieces[pieceIndex];
+  document.getElementById('statusModalTitle').textContent = `Status da Peça ${pieceIndex + 1}`;
+  const info = document.getElementById('statusModalInfo');
+  info.style.display = 'block';
+  const partes = [p.client, p.model, p.service].filter(Boolean).join(' • ') || '(sem detalhes)';
+  info.innerHTML = `<strong>${escapeHtml(partes)}</strong>Status atual: ${statusLabel(p.status || 'casa')}`;
+  document.getElementById('statusModal').classList.add('open');
+};
+
+window.openBulkStatusModal = function() {
+  if (!appState.isCostureira) return;
+  appState.selectedPieceIndex = null;  // null = mudar todas
+  const job = appState.jobs.find(j => j.id === appState.selectedDayJobId);
+  if (!job) return;
+  document.getElementById('statusModalTitle').textContent = `Mudar status de TODAS as peças`;
+  const info = document.getElementById('statusModalInfo');
+  info.style.display = 'block';
+  info.innerHTML = `<strong>${job.pieces.length} ${job.pieces.length === 1 ? 'peça' : 'peças'} no dia ${formatPretty(parseYmd(job.date))}</strong>Status atual: ${statusBreakdown(job)}`;
+  document.getElementById('statusModal').classList.add('open');
+};
+
+window.applyStatusChoice = async function(newStatus) {
+  const job = appState.jobs.find(j => j.id === appState.selectedDayJobId);
+  if (!job) return;
+
+  if (appState.selectedPieceIndex !== null) {
+    // Mudança individual: aplica direto
+    const newPieces = job.pieces.map((p, i) =>
+      i === appState.selectedPieceIndex ? { ...p, status: newStatus } : p
+    );
+    try {
+      await setDoc(doc(db, "jobs", job.id), { date: job.date, pieces: newPieces });
+      closeModal('statusModal');
+      // Reabre o modal do dia pra mostrar o novo status
+      openDayModal(job.id);
+    } catch (e) {
+      alert('Erro ao mudar status: ' + e.message);
+    }
+    return;
+  }
+
+  // Mudança em massa: pede confirmação detalhada
+  closeModal('statusModal');
+  const breakdown = statusBreakdown(job);
+  const targetLabel = statusLabel(newStatus);
+  document.getElementById('confirmTitle').textContent = 'Confirmar mudança em massa';
+  document.getElementById('confirmText').innerHTML =
+    `<strong>Mudar TODAS as peças para "${targetLabel}"?</strong>` +
+    `Dia: ${formatPretty(parseYmd(job.date))}<br>` +
+    `Status atual: ${breakdown}<br>` +
+    `Após mudança: ${job.pieces.length} ${job.pieces.length === 1 ? 'peça' : 'peças'} em "${targetLabel}"`;
+  document.getElementById('confirmYes').textContent = `SIM, MUDAR TODAS PARA "${targetLabel.toUpperCase()}"`;
+  document.getElementById('confirmYes').className = 'btn btn-primary';
+  document.getElementById('confirmYes').onclick = async () => {
+    const newPieces = job.pieces.map(p => ({ ...p, status: newStatus }));
+    try {
+      await setDoc(doc(db, "jobs", job.id), { date: job.date, pieces: newPieces });
+      closeModal('confirmModal');
+      openDayModal(job.id);
+    } catch (e) {
+      alert('Erro ao mudar status: ' + e.message);
+    }
+  };
+  document.getElementById('confirmModal').classList.add('open');
+};
+
+// === Busca ===
+window.openSearchModal = function() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchResults').innerHTML = '<div style="text-align:center;color:#9ca3af;padding:20px;">Digite acima para buscar</div>';
+  document.getElementById('searchModal').classList.add('open');
+};
+
+window.doSearch = function() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const results = document.getElementById('searchResults');
+  if (q.length < 2) {
+    results.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:20px;">Digite pelo menos 2 letras</div>';
+    return;
+  }
+
+  const matches = [];
+  appState.jobs.forEach(job => {
+    job.pieces.forEach((p, idx) => {
+      const text = `${p.client} ${p.model} ${p.service}`.toLowerCase();
+      if (text.includes(q)) {
+        matches.push({ job, piece: p, pieceIndex: idx });
+      }
+    });
+  });
+
+  if (matches.length === 0) {
+    results.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:20px;">Nenhum resultado</div>';
+    return;
+  }
+
+  matches.sort((a, b) => b.job.date.localeCompare(a.job.date));
+
+  results.innerHTML = '';
+  matches.forEach(m => {
+    const d = parseYmd(m.job.date);
+    const st = m.piece.status || 'casa';
+    const div = document.createElement('div');
+    div.className = 'search-result';
+    div.onclick = () => {
+      closeModal('searchModal');
+      openDayModal(m.job.id);
+    };
+    div.innerHTML = `
+      <div class="search-result-date"><span class="status-dot ${st}"></span>${formatPretty(d)} (${formatDow(d)}) — ${statusLabel(st)}</div>
+      <div class="search-result-content">
+        <strong>${escapeHtml(m.piece.client) || '(sem cliente)'}</strong> — ${escapeHtml(m.piece.model) || '(sem modelo)'} — ${escapeHtml(m.piece.service) || '(sem serviço)'}
+      </div>
+    `;
+    results.appendChild(div);
+  });
+};
+
+// === Histórico ===
+window.openHistoryModal = function() {
+  const today = new Date();
+  const monthAgo = new Date();
+  monthAgo.setMonth(monthAgo.getMonth() - 1);
+  document.getElementById('histStart').value = ymd(monthAgo);
+  document.getElementById('histEnd').value = ymd(today);
+  document.getElementById('historyResults').innerHTML = '';
+  document.getElementById('historyModal').classList.add('open');
+};
+
+async function getHistoryFiltered() {
+  const start = document.getElementById('histStart').value;
+  const end = document.getElementById('histEnd').value;
+  if (!start || !end) { alert('Selecione as datas'); return null; }
+
+  // Calcula o cutoff atual (o que está em memória)
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - appState.historyMonths);
+  const cutoffStr = ymd(cutoff);
+
+  // Se o usuário quer dados anteriores ao cutoff, busca no Firestore sob demanda
+  if (start < cutoffStr) {
+    try {
+      const jobsCol = collection(db, "jobs");
+      const q = query(jobsCol, where("date", ">=", start), where("date", "<", cutoffStr));
+      const snap = await getDocs(q);
+      const olderJobs = [];
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+        const pieces = (data.pieces || []).map(p => ({
+          client: p.client || '',
+          model: p.model || '',
+          service: p.service || '',
+          status: p.status || 'casa'
+        }));
+        olderJobs.push({ id: docSnap.id, date: data.date, pieces });
+      });
+      // Combina com os jobs já em memória, mas evita duplicatas
+      const combinedMap = new Map();
+      olderJobs.forEach(j => combinedMap.set(j.id, j));
+      appState.jobs.forEach(j => combinedMap.set(j.id, j));
+      const combined = [...combinedMap.values()];
+      return combined
+        .filter(j => j.date >= start && j.date <= end)
+        .sort((a, b) => a.date.localeCompare(b.date));
+    } catch (e) {
+      alert('Erro buscando histórico antigo: ' + e.message);
+      return null;
+    }
+  }
+
+  return appState.jobs
+    .filter(j => j.date >= start && j.date <= end)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+window.viewHistory = async function() {
+  const filtered = await getHistoryFiltered();
+  if (!filtered) return;
+  const results = document.getElementById('historyResults');
+  if (filtered.length === 0) {
+    results.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:20px;">Nenhum trabalho no período</div>';
+    return;
+  }
+  let html = '';
+  filtered.forEach(job => {
+    const d = parseYmd(job.date);
+    const agg = getJobAggregateStatus(job);
+    html += `<div class="search-result">
+      <div class="search-result-date"><span class="status-dot ${agg}"></span>${formatPretty(d)} (${formatDow(d)}) — ${job.pieces.length} ${job.pieces.length === 1 ? 'peça' : 'peças'}</div>`;
+    job.pieces.forEach(p => {
+      const st = p.status || 'casa';
+      html += `<div class="search-result-content" style="margin-top:4px;"><span class="status-dot ${st}"></span><strong>${escapeHtml(p.client) || '?'}</strong>: ${escapeHtml(p.model) || '?'} — ${escapeHtml(p.service) || '?'}</div>`;
+    });
+    html += `</div>`;
+  });
+  results.innerHTML = html;
+};
+
+window.exportHistory = async function() {
+  const filtered = await getHistoryFiltered();
+  if (!filtered) return;
+  if (filtered.length === 0) { alert('Nenhum trabalho no período'); return; }
+
+  let csv = 'Data,Dia da Semana,Cliente,Modelo,Servico,Status\n';
+  filtered.forEach(job => {
+    const d = parseYmd(job.date);
+    const dow = formatDow(d);
+    job.pieces.forEach(p => {
+      const row = [job.date, dow, p.client, p.model, p.service, statusLabel(p.status || 'casa')]
+        .map(v => `"${String(v || '').replace(/"/g, '""')}"`)
+        .join(',');
+      csv += row + '\n';
+    });
+  });
+
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `agenda-backup-${ymd(new Date())}.json`;
+  a.download = `historico-${document.getElementById('histStart').value}-a-${document.getElementById('histEnd').value}.csv`;
   a.click();
-}
+  URL.revokeObjectURL(url);
+};
 
-// === Google Calendar API ===
-function loadGoogleScripts() {
-  if (GOOGLE_CLIENT_ID.startsWith('COLE_')) return;
-
-  const s1 = document.createElement('script');
-  s1.src = 'https://accounts.google.com/gsi/client';
-  s1.async = true;
-  s1.defer = true;
-  s1.onload = initTokenClient;
-  document.body.appendChild(s1);
-
-  const s2 = document.createElement('script');
-  s2.src = 'https://apis.google.com/js/api.js';
-  s2.async = true;
-  s2.defer = true;
-  s2.onload = () => gapi.load('client', initGapi);
-  document.body.appendChild(s2);
-}
-
-async function initGapi() {
-  await gapi.client.init({
-    apiKey: GOOGLE_API_KEY,
-    discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
-  });
-  gapiReady = true;
-
-  const savedToken = localStorage.getItem('googleToken');
-  if (savedToken) {
-    googleToken = JSON.parse(savedToken);
-    gapi.client.setToken(googleToken);
-    renderGoogleStatus();
-  }
-}
-
-function initTokenClient() {
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: GOOGLE_CLIENT_ID,
-    scope: SCOPES,
-    callback: (resp) => {
-      if (resp.error) { alert('Erro ao conectar: ' + resp.error); return; }
-      googleToken = resp;
-      localStorage.setItem('googleToken', JSON.stringify(resp));
-      gapi.client.setToken(resp);
-      renderGoogleStatus();
-      alert('Google Agenda conectado com sucesso!');
-    }
-  });
-}
-
-function loginGoogle() {
-  if (GOOGLE_CLIENT_ID.startsWith('COLE_')) {
-    alert('A integração com Google Agenda ainda não foi configurada. Siga o guia que veio junto com este arquivo para configurar.');
-    return;
-  }
-  if (!tokenClient) { alert('Aguarde alguns segundos e tente de novo.'); return; }
-  tokenClient.requestAccessToken({ prompt: googleToken ? '' : 'consent' });
-}
-
-function logoutGoogle() {
-  if (googleToken) {
-    google.accounts.oauth2.revoke(googleToken.access_token, () => {});
-  }
-  googleToken = null;
-  localStorage.removeItem('googleToken');
-  closeModal('settingsModal');
-  renderGoogleStatus();
-}
-
-async function gcalCreate(job) {
-  const startD = parseYmd(job.start);
-  const endD = addDays(parseYmd(job.start), job.days);
-  const summary = job.client ? `Ocupado - ${job.client}` : `Ocupado - ${job.pieces} peças`;
-
-  const event = {
-    summary: summary,
-    description: `${job.pieces} peças`,
-    start: { date: ymd(startD) },
-    end: { date: ymd(endD) },
-    transparency: 'opaque'
-  };
-
-  const resp = await gapi.client.calendar.events.insert({
-    calendarId: CALENDAR_ID,
-    resource: event
-  });
-  return resp.result.id;
-}
-
-async function gcalUpdate(job) {
-  const startD = parseYmd(job.start);
-  const endD = addDays(parseYmd(job.start), job.days);
-  const summary = job.client ? `Ocupado - ${job.client}` : `Ocupado - ${job.pieces} peças`;
-
-  await gapi.client.calendar.events.update({
-    calendarId: CALENDAR_ID,
-    eventId: job.googleEventId,
-    resource: {
-      summary: summary,
-      description: `${job.pieces} peças`,
-      start: { date: ymd(startD) },
-      end: { date: ymd(endD) },
-      transparency: 'opaque'
-    }
-  });
-}
-
-async function gcalDelete(eventId) {
-  await gapi.client.calendar.events.delete({
-    calendarId: CALENDAR_ID,
-    eventId: eventId
-  });
-}
-
-// === Init ===
-loadGoogleScripts();
-render();
-
-// Fechar modal ao clicar fora
+// === Fecha modal ao clicar fora ===
 document.querySelectorAll('.modal-bg').forEach(bg => {
   bg.addEventListener('click', (e) => {
     if (e.target === bg) bg.classList.remove('open');
   });
 });
+
+// Init render
+render();
 </script>
 </body>
 </html>
