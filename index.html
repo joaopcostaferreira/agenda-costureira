@@ -1135,14 +1135,14 @@ window.exportHistory = async function() {
   if (!filtered) return;
   if (filtered.length === 0) { alert('Nenhum trabalho no período'); return; }
 
-  let csv = 'Data,Dia da Semana,Cliente,Modelo,Servico,Status\n';
+ let csv = 'Data;Dia da Semana;Cliente;Modelo;Servico;Status\n';
   filtered.forEach(job => {
     const d = parseYmd(job.date);
     const dow = formatDow(d);
     job.pieces.forEach(p => {
       const row = [job.date, dow, p.client, p.model, p.service, statusLabel(p.status || 'casa')]
         .map(v => `"${String(v || '').replace(/"/g, '""')}"`)
-        .join(',');
+        .join(';');
       csv += row + '\n';
     });
   });
